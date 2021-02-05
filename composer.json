@@ -1,0 +1,23 @@
+{
+    "name": "emizoripx/payment-qr-bcp",
+    "description": "Libreria para realizar pagos por QR",
+    "type": "library",
+    "license": "MIT",
+    "minimum-stability": "dev",
+    "require": {},
+
+    "autoload":{
+        "psr-4":{
+
+            "EmizorIpx\\PaymentQrBcp\\":"src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "EmizorIpx\\PaymentQrBcp\\PaymentQrServiceProvider"
+            ]
+            
+        }
+    }
+}
