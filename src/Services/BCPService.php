@@ -36,7 +36,7 @@ class BCPService {
         $this->client = new Client();
     }
 
-    public function generate_qr($transaction_id, $currency, $amount, $gloss, $expiration = null){
+    public function generate_qr($generatedId, $currency, $amount, $gloss, $expiration = null){
         if (!$expiration) {
             $expiration = config('paymentqr.bcp.default_expiration');
         }
@@ -59,8 +59,8 @@ class BCPService {
                     'collectors' => [
                         [
                             'name'=> 'transaction',
-                            'parameter'=> 'transaction_id',
-                            'value'=> $transaction_id,
+                            'parameter'=> 'generatedId',
+                            'value'=> $generatedId,
                         ]
                     ],
                     'publicToken' => $this->public_token,
