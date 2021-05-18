@@ -15,7 +15,7 @@ class BCPWebhookController extends Controller
     use RechargeBagsTrait;
     public function callback(){
 
-        Log::debug('BCP-WH => ' . request()->getContent());
+        Log::debug('[PAYMENT-QR] BCP-WH => ' . request()->getContent());
         $data = request()->only('CorrelationId', 'Id', 'ServiceCode', 'BusinessCode', 'IdQr', 'Eif', 'Account', 'Amount', 'Currency', 'Gloss', 'ReceiverAccount', 'ReceiverName', 
             'ReceiverDocument', 'ReceiverBank', 'ExpirationDate', 'ResponseCode', 'Status', 'Request', 'RequestDate', 'Response', 'ResponseDate', 'ResponseAch', 'ResponseAchDate', 
             'State', 'Description', 'GenerateType', 'Version', 'Collectors');
@@ -24,8 +24,8 @@ class BCPWebhookController extends Controller
         $transaction_collector = collect($data['Collectors'])->firstWhere('Name', 'transaction') ?? null;
         $company_collector = collect($data['Collectors'])->firstWhere('Name', 'company') ?? null;
 
-        \Log::debug("check value for tramsaction: " . $transaction_collector['Value']);
-        \Log::debug("check value for company: " . $company_collector['Value']);
+        \Log::debug("[PAYMENT-QR]check value for tramsaction: " . $transaction_collector['Value']);
+        \Log::debug("[PAYMENT-QR]check value for company: " . $company_collector['Value']);
 
         $PrepagoBagsPayment = PrepagoBagsPayment::find($transaction_collector['Value']);
 
