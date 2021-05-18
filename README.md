@@ -1,5 +1,5 @@
 # Pagos QR
-Version 1.1
+Version 1.2
 ## Parametros requeridos
 - Transaction ID
 - Currency
