@@ -21,28 +21,47 @@ class BCPService {
 
     protected $client;
 
-    public function __construct()
+    public function __construct(array $config = [])
     {
-        $this->host = config('paymentqr.bcp.host');
-        $this->user = config('paymentqr.bcp.user');
-        $this->password = config('paymentqr.bcp.password');
-        $this->certificate_path = config('paymentqr.bcp.certificate_path');
-        $this->certificate_password = config('paymentqr.bcp.certificate_password');
-        $this->app_user_id = config('paymentqr.bcp.app_user_id');
-        $this->service_code = config('paymentqr.bcp.service_code');
-        $this->business_code = config('paymentqr.bcp.business_code');
-        $this->public_token = config('paymentqr.bcp.public_token');
+        \Log::debug("config payment", $config);
+        if (empty($config)) {
+
+            $this->host = config('paymentqr.bcp.host'). '/api/v2/Qr/Generated';
+            $this->user = config('paymentqr.bcp.user');
+            $this->password = config('paymentqr.bcp.password');
+            $this->certificate_path = config('paymentqr.bcp.certificate_path');
+            $this->certificate_password = config('paymentqr.bcp.certificate_password');
+            $this->app_user_id = config('paymentqr.bcp.app_user_id');
+            $this->service_code = config('paymentqr.bcp.service_code');
+            $this->business_code = config('paymentqr.bcp.business_code');
+            $this->public_token = config('paymentqr.bcp.public_token');
+            $this->expiration = config('paymentqr.bcp.default_expiration');
+
+        } else {
+
+            $this->host = $config['host'];
+            $this->user = $config['user'];
+            $this->password = $config['password'];
+            $this->certificate_path = storage_path($config['certificate_path']);
+            $this->certificate_password = $config['certificate_password'];
+            $this->app_user_id = $config['app_user_id'];
+            $this->service_code = $config['service_code'];
+            $this->business_code = $config['business_code'];
+            $this->public_token = $config['public_token'];
+            $this->expiration = $config['expiration'];
+        }
 
         $this->client = new Client();
+
     }
 
-    public function generate_qr($generatedId, $currency, $amount, $gloss, $expiration = null){
+    public function generate_qr($generatedId, $currency, $amount, $gloss, $expiration = null, $requestedBy = 'purchase-prepago-bags'){
         if (!$expiration) {
-            $expiration = config('paymentqr.bcp.default_expiration');
+            $expiration = $this->expiration;
         }
 
         try {
-            $response = $this->client->request('POST', $this->host . '/api/v2/Qr/Generated', [
+            $response = $this->client->request('POST', $this->host, [
                 'auth' => [$this->user, $this->password],
                 'cert' => [$this->certificate_path, $this->certificate_password],
                 'headers' => [
@@ -61,6 +80,11 @@ class BCPService {
                             'name'=> 'transaction',
                             'parameter'=> 'generatedId',
                             'value'=> $generatedId,
+                        ],
+                        [
+                            'name' => 'requested_by',
+                            'parameter' => 'requestedBy',
+                            'value' => $requestedBy,
                         ]
                     ],
                     'publicToken' => $this->public_token,

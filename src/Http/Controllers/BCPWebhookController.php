@@ -2,18 +2,19 @@
 
 namespace EmizorIpx\PaymentQrBcp\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
 use EmizorIpx\PrepagoBags\Models\PrepagoBagsPayment;
-use EmizorIpx\PrepagoBags\Models\AccountPrepagoBags;
-use EmizorIpx\PrepagoBags\Repository\AccountPrepagoBagsRepository;
 use Carbon\Carbon;
 use EmizorIpx\PrepagoBags\Traits\RechargeBagsTrait;
+use App\Factory\PaymentFactory;
+use App\Models\PaymentHash;
+
 class BCPWebhookController extends Controller
 {
     use RechargeBagsTrait;
-    public function callback(){
+    public function callback()
+    {
 
         Log::debug('[PAYMENT-QR] BCP-WH => ' . request()->getContent());
         $data = request()->only('CorrelationId', 'Id', 'ServiceCode', 'BusinessCode', 'IdQr', 'Eif', 'Account', 'Amount', 'Currency', 'Gloss', 'ReceiverAccount', 'ReceiverName', 
@@ -22,38 +23,71 @@ class BCPWebhookController extends Controller
 
         
         $transaction_collector = collect($data['Collectors'])->firstWhere('Name', 'transaction') ?? null;
-        $company_collector = collect($data['Collectors'])->firstWhere('Name', 'company') ?? null;
+        $requestedBy = collect($data['Collectors'])->firstWhere('Name', 'requested_by');
+        \Log::debug("[PAYMENT-QR]check value for tramsaction: " , [$transaction_collector]);
+        \Log::debug("[PAYMENT-QR]check value for requested by : " , [$requestedBy]);
 
-        \Log::debug("[PAYMENT-QR]check value for tramsaction: " . $transaction_collector['Value']);
-        \Log::debug("[PAYMENT-QR]check value for company: " . $company_collector['Value']);
-
-        $PrepagoBagsPayment = PrepagoBagsPayment::find($transaction_collector['Value']);
-
-        if (!$PrepagoBagsPayment) {
-            return response()->json([
-                'State' => '002',
-                'Message' => 'TRANSACCIÓN NO ENCONTRADA',
-                'Data' => [
-                    'Id' => 'E-' . $transaction_collector['Value'],
-                ]
-            ]);
-        }
-        
-        $payment_data = [
-            'paid_on' => Carbon::now(),
-            'status_code' =>  "000",
-            'extras' => [
-                'bcp_request' => $data,
-            ]
-        ];
-        
         try {
-            
-            $PrepagoBagsPayment->update($payment_data);
-                              
-            $this->rechargePrepagoBags($PrepagoBagsPayment->company_id, $PrepagoBagsPayment->prepago_bag_id);
 
-            bitacora_info("AccountPrepagoBagService:recharge", "PrepagoBags comprado por :  " . $PrepagoBagsPayment->company_id . " con exito");
+            if ($requestedBy['value'] == 'purchase-prepago-bags') {
+
+                $PrepagoBagsPayment = PrepagoBagsPayment::find($transaction_collector['Value']);
+
+                if (!$PrepagoBagsPayment) {
+                    return response()->json([
+                        'State' => '002',
+                        'Message' => 'TRANSACCIÓN NO ENCONTRADA',
+                        'Data' => [
+                            'Id' => 'E-' . $transaction_collector['Value'],
+                        ]
+                    ]);
+                }
+
+                $payment_data = [
+                    'paid_on' => Carbon::now(),
+                    'status_code' =>  "000",
+                    'extras' => [
+                        'bcp_request' => $data,
+                    ]
+                ];
+                $PrepagoBagsPayment->update($payment_data);
+    
+                $this->rechargePrepagoBags($PrepagoBagsPayment->company_id, $PrepagoBagsPayment->prepago_bag_id);
+    
+                bitacora_info("AccountPrepagoBagService:recharge", "PrepagoBags comprado por :  " . $PrepagoBagsPayment->company_id . " con exito");
+
+            } else {
+
+                $payment_hash = PaymentHash::whereRaw('BINARY `hash`= ?', [$transaction_collector['Value']])->first();
+
+                if(!empty($payment_hash)) {
+
+                    \Log::info("[PAYMENT-QR] RECEIVED in callback for invoice #". $invoice->number. " payment for ". $invoice->amount. " in company_id = " . $invoice->company_id);
+                    
+                    $invoice = $payment_hash->fee_invoice;
+                    
+                    $payment = PaymentFactory::create($invoice->company_id, $invoice->user_id);
+                    $payment->client_id = $invoice->client_id;
+                    $payment->save();
+                    
+                    $payment_hash->payment_id = $payment->id;
+                    $payment_hash->save();
+                    
+                    $payment = $payment->service()->applyCredits($payment_hash)->save();
+                    
+                    $fel_invoice = $invoice->fel_invoice;
+                    
+                    if (! empty($fel_invoice)  && ! is_null($fel_invoice->cuf) ) {
+                        \Log::info("[PAYMENT-QR] emitting invoice for SIN");
+                        $invoice->emit(true);
+                        \Log::info("[PAYMENT-QR] INVOICE was succesfully emitted");
+                    }
+                    $payment->service()->sendEmail();
+                } else {
+                    \Log::error("[PAYMENT-QR] PAYMENT HASH " . $transaction_collector['Value']. " WAS NOT FOUND");
+                }
+            }
+
 
             return response()->json([
                 'State' => '000',
@@ -62,7 +96,6 @@ class BCPWebhookController extends Controller
                     'Id' => $data['Id'],
                 ]
             ]);
-
 
         } catch (ServiceException $ex) {
             Log::emergency("BCP-WH => File: " . $ex->getFile() . " Line: " . $ex->getLine() . " Message: " . $ex->getMessage());
