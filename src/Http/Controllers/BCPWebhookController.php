@@ -51,8 +51,8 @@ class BCPWebhookController extends Controller
                     ]
                 ];
                 $PrepagoBagsPayment->update($payment_data);
-    
-                $this->rechargePrepagoBags($PrepagoBagsPayment->company_id, $PrepagoBagsPayment->prepago_bag_id);
+                
+                $PrepagoBagsPayment->company->rechargePrepagoBags($PrepagoBagsPayment->prepago_bag_id);
     
                 bitacora_info("AccountPrepagoBagService:recharge", "PrepagoBags comprado por :  " . $PrepagoBagsPayment->company_id . " con exito");
 
