@@ -29,7 +29,7 @@ class BCPWebhookController extends Controller
 
         try {
 
-            if ($requestedBy['value'] == 'purchase-prepago-bags') {
+            if ($requestedBy['Value'] == 'purchase-prepago-bags') {
 
                 $PrepagoBagsPayment = PrepagoBagsPayment::find($transaction_collector['Value']);
 
