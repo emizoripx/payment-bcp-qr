@@ -62,9 +62,10 @@ class BCPWebhookController extends Controller
 
                 if(!empty($payment_hash)) {
 
-                    \Log::info("[PAYMENT-QR] RECEIVED in callback for invoice #". $invoice->number. " payment for ". $invoice->amount. " in company_id = " . $invoice->company_id);
                     
                     $invoice = $payment_hash->fee_invoice;
+                    
+                    \Log::info("[PAYMENT-QR] RECEIVED in callback for invoice #". $invoice->number. " payment for ". $invoice->amount. " in company_id = " . $invoice->company_id);
                     
                     $payment = PaymentFactory::create($invoice->company_id, $invoice->user_id);
                     $payment->client_id = $invoice->client_id;
