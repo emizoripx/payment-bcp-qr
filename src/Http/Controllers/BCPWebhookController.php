@@ -62,28 +62,33 @@ class BCPWebhookController extends Controller
 
                 if(!empty($payment_hash)) {
 
-                    
-                    $invoice = $payment_hash->fee_invoice;
-                    
-                    \Log::info("[PAYMENT-QR] RECEIVED in callback for invoice #". $invoice->number. " payment for ". $invoice->amount. " in company_id = " . $invoice->company_id);
-                    
-                    $payment = PaymentFactory::create($invoice->company_id, $invoice->user_id);
-                    $payment->client_id = $invoice->client_id;
-                    $payment->save();
-                    
-                    $payment_hash->payment_id = $payment->id;
-                    $payment_hash->save();
-                    
-                    $payment = $payment->service()->applyCredits($payment_hash)->save();
-                    
-                    $fel_invoice = $invoice->fel_invoice;
-                    
-                    if (! empty($fel_invoice)  && ! is_null($fel_invoice->cuf) ) {
-                        \Log::info("[PAYMENT-QR] emitting invoice for SIN");
-                        $invoice->emit(true);
-                        \Log::info("[PAYMENT-QR] INVOICE was succesfully emitted");
+                    try {
+                        
+                        $invoice = $payment_hash->fee_invoice;
+    
+                        \Log::info("[PAYMENT-QR] RECEIVED in callback for invoice #". $invoice->number. " payment for ". $invoice->amount. " in company_id = " . $invoice->company_id);
+                        
+                        $payment = PaymentFactory::create($invoice->company_id, $invoice->user_id);
+                        $payment->client_id = $invoice->client_id;
+                        $payment->save();
+                        
+                        $payment_hash->payment_id = $payment->id;
+                        $payment_hash->save();
+                        
+                        $payment = $payment->service()->applyCredits($payment_hash)->save();
+                        
+                        $fel_invoice = $invoice->fel_invoice;
+                        
+                        if (! empty($fel_invoice)  && ! is_null($fel_invoice->cuf) ) {
+                            \Log::info("[PAYMENT-QR] emitting invoice for SIN");
+                            $invoice->emit(true);
+                            \Log::info("[PAYMENT-QR] INVOICE was succesfully emitted");
+                        }
+                        $payment->service()->sendEmail();
+                        
+                    } catch (\Throwable $th) {
+                        \Log::error("[PAYMENT-QR] PAYMENT ERROR " . $th->getMessage());    
                     }
-                    $payment->service()->sendEmail();
                 } else {
                     \Log::error("[PAYMENT-QR] PAYMENT HASH " . $transaction_collector['Value']. " WAS NOT FOUND");
                 }
