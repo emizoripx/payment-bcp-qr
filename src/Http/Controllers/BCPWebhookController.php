@@ -9,14 +9,14 @@ use Carbon\Carbon;
 use EmizorIpx\PrepagoBags\Traits\RechargeBagsTrait;
 use App\Models\PaymentHash;
 use App\Models\CompanyGateway;
-
+use App\Models\Invoice;
+use App\Utils\Traits\MakesHash;
 class BCPWebhookController extends Controller
 {
     use RechargeBagsTrait;
+    use MakesHash;
     public function callback()
     {
-
-        Log::debug('[PAYMENT-QR] BCP-WH => ' . request()->getContent());
         $data = request()->only(
             'CorrelationId',
             'Id',
@@ -85,27 +85,35 @@ class BCPWebhookController extends Controller
             } else {
                 bitacora_info("PAYMENT-QR","PAYMENT HASH ". $transaction_collector['Value']);
                 $payment_hash = PaymentHash::whereRaw('BINARY `hash`= ?', [$transaction_collector['Value']])->first();
+
                 $invoice = $payment_hash->fee_invoice;
                 if (!empty($payment_hash)) {
 
                     try {
 
                         $gateway = CompanyGateway::whereCompanyId($invoice->company_id)->whereGatewayKey('d14dd26a47cec830x11x5700bfb67b34')->first();
-                        bitacora_info("PAYMENT-QR", "RECEIVED in callback for invoice #" . $invoice->number . " payment for " . $invoice->amount . " in company_id = " . $invoice->company_id);
-                        $payment = $gateway
+                        // bitacora_info("PAYMENT-QR", "RECEIVED in callback for invoice #" . $invoice->number . " payment for " . $invoice->amount . " in company_id = " . $invoice->company_id);
+                        $gateway
                             ->driver($invoice->client)
                             ->setPaymentMethod(1000) // gatewattype qr = 1000
                             ->setPaymentHash($payment_hash)
-                            ->processPaymentCallback($invoice->amount, "Pago por QR, factura #".$invoice->number .", por la suma de ". $invoice->amount);
+                            ->processPaymentCallback("Pago con QR");
 
-                        $fel_invoice = $invoice->fel_invoice;
                         
-
-                        if ($invoice->fresh()->balance == 0 & !empty($fel_invoice)  && is_null($fel_invoice->cuf)) {
-                            $invoice->service()->emit();
-                            bitacora_info("PAYMENT-QR", "INVOICE was succesfully emitted");
+                        
+                        foreach ($payment_hash->data->invoices as $i) {
+                            $invoice_id = $this->decodePrimaryKey($i->invoice_id);
+                            $invoice = Invoice::find($invoice_id);
+                            if ($invoice) {
+                                $fel_invoice = $invoice->fel_invoice;
+                                if ($invoice->fresh()->balance == 0 & !empty($fel_invoice)  && is_null($fel_invoice->cuf)) {
+                                    $invoice->service()->emit();
+                                    \Log::debug("EMITIENDO FACTURA $invoice->number");
+                                    bitacora_info("PAYMENT-QR", $transaction_collector['Value'] . " - INVOICE $invoice->number was succesfully emitted");
+                                }
+                            }
                         }
-                        $payment->service()->sendEmail();
+                        
                     } catch (\Throwable $th) {
                         bitacora_error("PAYMENT-QR", " PAYMENT ERROR " . $th->getMessage());
                     }
@@ -113,7 +121,7 @@ class BCPWebhookController extends Controller
                     bitacora_error("PAYMENT-QR", " PAYMENT HASH " . $transaction_collector['Value'] . " WAS NOT FOUND");
                 }
             }
-            bitacora_error("PAYMENT-QR", "COMPLETADO");
+            bitacora_info("PAYMENT-QR", "COMPLETADO");
 
             return response()->json([
                 'State' => '000',
