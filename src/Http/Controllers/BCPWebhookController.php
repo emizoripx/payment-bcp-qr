@@ -101,18 +101,18 @@ class BCPWebhookController extends Controller
 
                         
                         
-                        foreach ($payment_hash->data->invoices as $i) {
-                            $invoice_id = $this->decodePrimaryKey($i->invoice_id);
-                            $invoice = Invoice::find($invoice_id);
-                            if ($invoice) {
-                                $fel_invoice = $invoice->fel_invoice;
-                                if ($invoice->fresh()->balance == 0 & !empty($fel_invoice)  && is_null($fel_invoice->cuf)) {
-                                    $invoice->service()->emit();
-                                    \Log::debug("EMITIENDO FACTURA $invoice->number");
-                                    bitacora_info("PAYMENT-QR", $transaction_collector['Value'] . " - INVOICE $invoice->number was succesfully emitted");
-                                }
-                            }
-                        }
+                        // foreach ($payment_hash->data->invoices as $i) {
+                        //     $invoice_id = $this->decodePrimaryKey($i->invoice_id);
+                        //     $invoice = Invoice::find($invoice_id);
+                        //     if ($invoice) {
+                        //         $fel_invoice = $invoice->fel_invoice;
+                        //         if ($invoice->fresh()->balance == 0 & !empty($fel_invoice)  && is_null($fel_invoice->cuf)) {
+                        //             $invoice->service()->emit();
+                        //             \Log::debug("EMITIENDO FACTURA $invoice->number");
+                        //             bitacora_info("PAYMENT-QR", $transaction_collector['Value'] . " - INVOICE $invoice->number was succesfully emitted");
+                        //         }
+                        //     }
+                        // }
                         
                     } catch (\Throwable $th) {
                         bitacora_error("PAYMENT-QR", " PAYMENT ERROR " . $th->getMessage());
