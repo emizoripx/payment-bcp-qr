@@ -81,6 +81,8 @@ class BCPWebhookController extends Controller
 
                 $PrepagoBagsPayment->company->rechargePrepagoBags($PrepagoBagsPayment->prepago_bag_id);
 
+                $PrepagoBagsPayment->service()->generateInvoiceToPurchase();
+
                 bitacora_info("AccountPrepagoBagService:recharge", "PrepagoBags comprado por :  " . $PrepagoBagsPayment->company_id . " con exito");
             } else {
                 bitacora_info("PAYMENT-QR","PAYMENT HASH ". $transaction_collector['Value']);
