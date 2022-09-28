@@ -99,7 +99,7 @@ class BCPWebhookController extends Controller
                             ->driver($invoice->client)
                             ->setPaymentMethod(1000) // gatewattype qr = 1000
                             ->setPaymentHash($payment_hash)
-                            ->processPaymentCallback("Pago con QR");
+                            ->processPaymentCallback("Pago con QR ". $transaction_collector['Value']);
 
                         bitacora_info("PAYMENT-QR", "AUTO-BILL STATUS " . $invoice->company->getSetting('auto_bill'));
                         

@@ -6,7 +6,7 @@ namespace EmizorIpx\PaymentQrBcp\Services;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
 use Ramsey\Uuid\Uuid;
-
+use Throwable;
 
 class BCPService {
     protected $host;
@@ -23,7 +23,7 @@ class BCPService {
 
     public function __construct(array $config = [])
     {
-        \Log::debug("config payment", $config);
+        \Log::debug("INGRESANDO AO CONFIG  " , $config);
         if (empty($config)) {
 
             $this->host = config('paymentqr.bcp.host'). '/api/v2/Qr/Generated';
@@ -59,8 +59,9 @@ class BCPService {
         if (!$expiration) {
             $expiration = $this->expiration;
         }
-
+        \Log::debug("ingresar a este punto depago");
         try {
+            \Log::debug("ingresa a envio de payment ");
             $response = $this->client->request('POST', $this->host, [
                 'auth' => [$this->user, $this->password],
                 'cert' => [$this->certificate_path, $this->certificate_password],
@@ -90,10 +91,12 @@ class BCPService {
                     'publicToken' => $this->public_token,
                 ]
             ]);
-        } catch (ClientException $ex) {
+            \Log::debug("response from payments " . $response->getBody());
+        } catch (Throwable $ex) {
+            \Log::debug("ERRORES IN BCP SERVICE ", [$ex->getFile(),$ex->getLine(),$ex->getMessage()]);
             $response = $ex->getResponse();
         }
-
+        \Log::debug("the response of payment is  ", [$response]);
         return json_decode($response->getBody());
     }
 }
