@@ -111,6 +111,13 @@ class BCPWebhookController extends Controller
                                 if ($invoice) {
                                     $fel_invoice = $invoice->fel_invoice;
                                     if ($invoice->fresh()->balance == 0 & !empty($fel_invoice)  && is_null($fel_invoice->cuf)) {
+                                        if ($invoice->number == 0) {
+                                            \Log::debug("\n\n\n\n\n ASIGNANDO VALOR desde PREFACTURA EMIT =================invoice_number is set up cause number is not assigned \n\n\n\n\n\n");
+                                            // generate next number new emission invoice
+                                            $invoice->service()->applyNumber()->save();
+                                        } else {
+                                            \Log::debug(" \n\n\n\n =============Number is assigned  " . $invoice->number . " \n\n\n\n\n\n");
+                                        }
                                         $invoice->service()->emit();
                                         \Log::debug("EMITIENDO FACTURA $invoice->number");
                                         bitacora_info("PAYMENT-QR", $transaction_collector['Value'] . " - INVOICE $invoice->number was succesfully emitted");
